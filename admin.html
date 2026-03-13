@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baby Shower Isaac - Administradora</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Fredoka:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="clouds">
+        <div class="cloud cloud-1"></div>
+        <div class="cloud cloud-2"></div>
+        <div class="cloud cloud-3"></div>
+        <div class="cloud cloud-4"></div>
+        <div class="cloud cloud-5"></div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="container glass">
+        <header>
+            <h1>Acceso de Mamá</h1>
+        </header>
+        <div class="login-form">
+            <p style="margin-bottom: 1.5rem; color: var(--text-main); font-weight: 600;">Ingresa la contraseña para dirigir el bingo:</p>
+            <input type="password" id="admin-password" placeholder="Contraseña..." class="word-input" style="text-align:center;">
+            <button id="btn-login" class="btn-primary">Entrar</button>
+            <p id="login-error" class="hidden" style="color:#d93025; margin-top:15px; font-weight:bold;">Contraseña incorrecta</p>
+            <div style="margin-top: 25px;">
+                <a href="index.html" style="color: var(--text-light); text-decoration: none; font-size: 0.95rem; font-weight: 700;">Volver a los cartones</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Control Panel -->
+    <div id="admin-dashboard" class="container glass hidden">
+        <header>
+            <h1>Dirigir Bingo</h1>
+        </header>
+        <div class="mode-switch">
+            <button id="btn-tab-caller" class="active">Ruleta</button>
+            <button id="btn-tab-config">Opciones</button>
+        </div>
+
+        <!-- Caller Mode (Tombola) -->
+        <main id="caller-section">
+            <div class="tombola-container">
+                <div class="tombola" id="tombola">
+                    <div class="tombola-inner"></div>
+                </div>
+            </div>
+            <div class="caller-display">
+                <div id="current-word" class="current-word">¡Lista para girar!</div>
+                <button id="btn-draw" class="btn-primary btn-large">Girar Ruleta</button>
+            </div>
+            <div class="caller-history">
+                <h3>Ya salieron:</h3>
+                <div id="history-list" class="history-list"></div>
+            </div>
+            <div class="actions">
+                <button id="btn-reset-caller" class="btn-secondary">Reiniciar Juego</button>
+            </div>
+        </main>
+
+        <!-- Config Mode -->
+        <main id="config-section" class="hidden">
+            <div class="admin-panel">
+                <h2>Cosas de Bingo</h2>
+                <p>Opciones separadas por comas (mínimo 24):</p>
+                <textarea id="word-input" rows="6" class="word-input"></textarea>
+                <button id="btn-save-words" class="btn-primary">Guardar Opciones</button>
+                <p id="save-msg" class="success-msg hidden">¡Opciones guardadas!</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Admin Alert Modal for BINGO Winners -->
+    <div id="winner-modal" class="container glass hidden" style="position: fixed; z-index: 100; border: 4px solid #ff0844; background: rgba(255,255,255,0.95); box-shadow: 0 0 50px rgba(255, 8, 68, 0.5);">
+        <h2 style="font-size: 3.5rem; color: #ff0844; font-family: 'Fredoka', sans-serif; margin-bottom: 0.5rem; text-shadow: 2px 2px 5px rgba(0,0,0,0.1);">¡BINGO!</h2>
+        <p style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin-bottom: 1.5rem;">Alguien ha completado su cartón:</p>
+        <div id="winner-name" style="background: linear-gradient(135deg, #4facfe, #00f2fe); color: white; padding: 15px 30px; border-radius: 30px; font-size: 2rem; font-weight: 800; font-family: 'Fredoka', sans-serif; display: inline-block; margin-bottom: 2rem;"></div>
+        <div>
+            <button id="btn-close-winner" class="btn-primary">Aceptar y Continuar</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
