@@ -1,5 +1,10 @@
-// Socket.io Client
-const socket = io();
+// Supabase Client Setup
+const supabaseUrl = 'https://yzmpfzegltldxybnxetp.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6bXBmemVnbHRsZHh5Ym54ZXRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNjU4ODksImV4cCI6MjA4ODk0MTg4OX0.8chkQbYBsoE-VIg2Aq_UGOVM8gVW-gC9-z7R1s04HzU';
+const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+// Create Realtime Channel
+const bingoChannel = supabaseClient.channel('bingo_room');
 
 const playerLogin = document.getElementById('player-login');
 const playerBoardContainer = document.getElementById('player-board-container');
@@ -22,33 +27,40 @@ let currentPlayer = localStorage.getItem('bingoPlayerName_isaac');
 let serverWords = [];
 let serverCalledWords = [];
 
-// Escucha el estado del juego que manda la Base de Datos
-socket.on('syncState', (state) => {
-    // Si la lista de palabras cambió radicalmente desde el servidor,
-    // o el juego se reinició y borramos los cartones locales.
-    const mustReset = serverWords.length > 0 && serverWords.join() !== state.words.join();
-    
-    serverWords = state.words;
-    serverCalledWords = state.calledWords;
+// Subscribe to Supabase Broadcast Events
+bingoChannel
+  .on('broadcast', { event: 'sync_state' }, (payload) => {
+      const state = payload.payload;
+      const mustReset = serverWords.length > 0 && serverWords.join() !== state.words.join();
+      
+      serverWords = state.words;
+      serverCalledWords = state.calledWords;
 
-    if (currentPlayer) {
-        if (mustReset) {
-            alert("¡Mamá ha cambiado las reglas o las palabras del Bingo! Se generará un cartón nuevo con las opciones actuales.");
-            localStorage.removeItem('bingoBoard_isaac_player_' + currentPlayer);
-            generateBoard();
-        }
-        updateLatestWord();
-    }
-});
+      if (currentPlayer) {
+          if (mustReset || state.alertMsg) {
+              if (state.alertMsg) alert(state.alertMsg);
+              else alert("¡La Mamá de Isaac cambió las reglas o las palabras del Bingo! Se generará un cartón nuevo con las opciones actuales.");
+              localStorage.removeItem('bingoBoard_isaac_player_' + currentPlayer);
+              generateBoard();
+          }
+          // The board might just need rendering if words just loaded
+          if (document.querySelectorAll('.cell').length === 0 || document.querySelector('.cell').textContent === 'Conectando con Mamá...') {
+               generateBoard();
+          }
+          updateLatestWord();
+      }
+  })
+  .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+          // Ask the admin for the current state
+          bingoChannel.send({
+              type: 'broadcast',
+              event: 'request_state',
+              payload: {}
+          });
+      }
+  });
 
-// Admin Alerts (ej. reinicios de juego)
-socket.on('adminAlert', (msg) => {
-    if (currentPlayer) {
-        alert(msg);
-        localStorage.removeItem('bingoBoard_isaac_player_' + currentPlayer);
-        generateBoard();
-    }
-});
 
 // Login System
 function initPlayerSession() {
@@ -99,9 +111,9 @@ function generateBoard() {
     const storageKey = 'bingoBoard_isaac_player_' + currentPlayer;
     const savedBoard = localStorage.getItem(storageKey);
     
-    // Si no tenemos palabras del servidor aún, devolvérnos
+    // Si no tenemos palabras del servidor aún (Admin offline o cargando)
     if (serverWords.length === 0) {
-        board.innerHTML = '<p style="color:white; font-size:1.2rem; grid-column: span 5; text-align: center;">Conectando con Servidor...</p>';
+        board.innerHTML = '<p style="color:white; font-size:1.2rem; grid-column: span 5; text-align: center;">Conectando con Mamá...</p>';
         return;
     }
 
@@ -156,8 +168,12 @@ btnNewCard.addEventListener('click', () => {
 
 // Bingo Event - Sends to DB
 btnBingo.addEventListener('click', () => {
-    // Comunicar el grito a la base de datos central!
-    socket.emit('playerBingo', currentPlayer);
+    // Comunicar el grito por Supabase Broadcast
+    bingoChannel.send({
+        type: 'broadcast',
+        event: 'playerBingo',
+        payload: { name: currentPlayer }
+    });
     
     // Celebración local en el dispositivo del invitado
     celebrationModal.classList.remove('hidden');
