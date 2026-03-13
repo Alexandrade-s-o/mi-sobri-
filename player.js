@@ -39,12 +39,15 @@ bingoChannel
       if (currentPlayer) {
           if (mustReset || state.alertMsg) {
               if (state.alertMsg) alert(state.alertMsg);
-              else alert("¡La Mamá de Isaac cambió las reglas o las palabras del Bingo! Se generará un cartón nuevo con las opciones actuales.");
+              else alert("\u00a1La Mam\u00e1 de Isaac cambi\u00f3 las reglas o las palabras del Bingo! Se generar\u00e1 un cart\u00f3n nuevo con las opciones actuales.");
               localStorage.removeItem('bingoBoard_isaac_player_' + currentPlayer);
               generateBoard();
+          } else {
+              // Just refresh which cells are now valid/callable
+              refreshCellValidity();
           }
           // The board might just need rendering if words just loaded
-          if (document.querySelectorAll('.cell').length === 0 || document.querySelector('.cell').textContent === 'Conectando con Mamá...') {
+          if (document.querySelectorAll('.cell').length === 0 || document.querySelector('.cell.free') === null) {
                generateBoard();
           }
           updateLatestWord();
@@ -52,7 +55,6 @@ bingoChannel
   })
   .subscribe((status) => {
       if (status === 'SUBSCRIBED') {
-          // Ask the admin for the current state
           bingoChannel.send({
               type: 'broadcast',
               event: 'request_state',
@@ -134,17 +136,47 @@ function generateBoard() {
         cell.classList.add('cell');
         if (index === 12) cell.classList.add('free');
         if (cellObj.marked) cell.classList.add('marked');
+
+        // Check if this word has been called
+        const isCalled = index === 12 || serverCalledWords.includes(cellObj.text);
+        if (!isCalled) cell.classList.add('locked'); // Greyed out / not clickable
+
         cell.textContent = cellObj.text;
 
         cell.addEventListener('click', () => {
-            if (index !== 12) {
-                cellObj.marked = !cellObj.marked;
-                if (cellObj.marked) cell.classList.add('marked');
-                else cell.classList.remove('marked');
-                localStorage.setItem(storageKey, JSON.stringify(cellData));
+            // Only allow marking if the word has been officially called
+            if (index === 12) return; // free space always stays marked
+            if (!serverCalledWords.includes(cellObj.text)) {
+                cell.classList.add('invalid-click');
+                setTimeout(() => cell.classList.remove('invalid-click'), 500);
+                return;
             }
+            cellObj.marked = !cellObj.marked;
+            if (cellObj.marked) cell.classList.add('marked');
+            else cell.classList.remove('marked');
+            localStorage.setItem(storageKey, JSON.stringify(cellData));
         });
         board.appendChild(cell);
+    });
+}
+
+// Refresh which cells are locked/unlocked based on called words
+function refreshCellValidity() {
+    const storageKey = 'bingoBoard_isaac_player_' + currentPlayer;
+    const savedBoard = localStorage.getItem(storageKey);
+    if (!savedBoard) return;
+    const cellData = JSON.parse(savedBoard);
+
+    const cells = board.querySelectorAll('.cell');
+    cells.forEach((cell, index) => {
+        if (index === 12) return; // free space
+        const word = cellData[index]?.text;
+        if (serverCalledWords.includes(word)) {
+            cell.classList.remove('locked');
+        } else {
+            cell.classList.add('locked');
+            // If it was marked before but is no longer (shouldn't happen but safety)
+        }
     });
 }
 
