@@ -1,0 +1,8 @@
+{
+  "name": "bingo",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "echo 'Static HTML build'",
+    "start": "echo 'Start script'"
+  }
+}
