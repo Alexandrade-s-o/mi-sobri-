@@ -513,15 +513,10 @@ button {
     100% { box-shadow: 0 0 0 0 rgba(255, 8, 68, 0); }
 }
 
-/* Locked cells (word not yet called by roulette) */
-.cell.locked {
-    opacity: 0.4;
-    cursor: not-allowed;
-    filter: grayscale(70%);
-}
-.cell.locked:hover {
-    transform: none;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+/* Called cells (word has been drawn from roulette - subtle glow hint) */
+.cell.called:not(.marked) {
+    border: 2px solid rgba(79, 172, 254, 0.6);
+    box-shadow: 0 0 10px rgba(79, 172, 254, 0.3);
 }
 .cell.invalid-click {
     animation: shake 0.4s ease;

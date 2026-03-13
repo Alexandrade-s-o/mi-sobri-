@@ -136,21 +136,10 @@ function generateBoard() {
         cell.classList.add('cell');
         if (index === 12) cell.classList.add('free');
         if (cellObj.marked) cell.classList.add('marked');
-
-        // Check if this word has been called
-        const isCalled = index === 12 || serverCalledWords.includes(cellObj.text);
-        if (!isCalled) cell.classList.add('locked'); // Greyed out / not clickable
-
         cell.textContent = cellObj.text;
 
         cell.addEventListener('click', () => {
-            // Only allow marking if the word has been officially called
             if (index === 12) return; // free space always stays marked
-            if (!serverCalledWords.includes(cellObj.text)) {
-                cell.classList.add('invalid-click');
-                setTimeout(() => cell.classList.remove('invalid-click'), 500);
-                return;
-            }
             cellObj.marked = !cellObj.marked;
             if (cellObj.marked) cell.classList.add('marked');
             else cell.classList.remove('marked');
@@ -160,7 +149,7 @@ function generateBoard() {
     });
 }
 
-// Refresh which cells are locked/unlocked based on called words
+// Refresh cells - just visual update showing which ones have been called (no locking)
 function refreshCellValidity() {
     const storageKey = 'bingoBoard_isaac_player_' + currentPlayer;
     const savedBoard = localStorage.getItem(storageKey);
@@ -171,11 +160,11 @@ function refreshCellValidity() {
     cells.forEach((cell, index) => {
         if (index === 12) return; // free space
         const word = cellData[index]?.text;
+        // Highlight cells whose word has been called (subtle glow)
         if (serverCalledWords.includes(word)) {
-            cell.classList.remove('locked');
+            cell.classList.add('called');
         } else {
-            cell.classList.add('locked');
-            // If it was marked before but is no longer (shouldn't happen but safety)
+            cell.classList.remove('called');
         }
     });
 }
@@ -198,16 +187,56 @@ btnNewCard.addEventListener('click', () => {
     }
 });
 
-// Bingo Event - Sends to DB
+// Bingo Event - Validates then sends to server
 btnBingo.addEventListener('click', () => {
-    // Comunicar el grito por Supabase Broadcast
+    const storageKey = 'bingoBoard_isaac_player_' + currentPlayer;
+    const savedBoard = localStorage.getItem(storageKey);
+    if (!savedBoard) return;
+
+    const cellData = JSON.parse(savedBoard);
+
+    // Check all marked cells (except free space) are in the called list
+    const cheatingCells = cellData.filter((cell, i) => {
+        return i !== 12 && cell.marked && !serverCalledWords.includes(cell.text);
+    });
+
+    if (cheatingCells.length > 0) {
+        // Busted! Highlight the bad cells
+        const cells = board.querySelectorAll('.cell');
+        cellData.forEach((cell, i) => {
+            if (i !== 12 && cell.marked && !serverCalledWords.includes(cell.text)) {
+                cells[i].classList.add('invalid-click');
+                setTimeout(() => cells[i].classList.remove('invalid-click'), 800);
+            }
+        });
+        alert('🚨 ¡Trampa detectada! Tienes casillas marcadas que aún no han salido en la ruleta. ¡Sigue esperando!');
+        return;
+    }
+
+    // Check there are enough marked cells to form a valid bingo (row, column or diagonal)
+    const grid = cellData.map(c => c.marked);
+    const lines = [
+        // Rows
+        [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],
+        // Columns
+        [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],
+        // Diagonals
+        [0,6,12,18,24],[4,8,12,16,20]
+    ];
+    const hasBingo = lines.some(line => line.every(i => grid[i]));
+
+    if (!hasBingo) {
+        alert('¡Todavía no tienes una línea completa! Sigue marcando.');
+        return;
+    }
+
+    // Valid Bingo! Send signal
     bingoChannel.send({
         type: 'broadcast',
         event: 'playerBingo',
         payload: { name: currentPlayer }
     });
     
-    // Celebración local en el dispositivo del invitado
     celebrationModal.classList.remove('hidden');
 });
 
